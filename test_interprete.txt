@@ -1,0 +1,45 @@
+--assignment
+interpreter [] "x=1;"
+interpreter [] "x=1; aaaaa"
+
+--array assignement
+interpreter [] "x=[1,2,3,54,9123];"
+
+--matrix assignement
+interpreter [] "x=[[16, 266543, 3] , [54, 9123, 0, 17]];"   --2 rows, different num of column
+
+--variable access
+interpreter [] "x=1; i=x+1;"
+
+--array access
+interpreter [] "x=[3,42,312]; i=x[0]; j=x[1]; k=x[2];"
+--index to large
+interpreter [] "x=[1,2,3]; i=x[9];"
+
+--matrix access
+interpreter [] "x=[[16, 543, 32],[54, 9123, 0, 17]]; i=x[0][0]; j=x[1][3]; k=x[1][2];"
+
+--arithmetic expression             
+interpreter [] "x= 1 + 2*20 /5 -9;"     -- 0
+interpreter [] "x= 7+4+1/5-20/100;"     -- 11
+interpreter [] "x= 21/(47+21)-3;"       -- -2,69 l'interp da -3
+interpreter [] "x= 6-89;"               -- -83
+interpreter [] "x= 2/3;"                -- 0.66  da 0
+interpreter [] "x=[[1,2,3],[6,5,4]]; y=[7,8,9]; i=x[0][2] * y[1] + x[1][2] -12 * x[0][0];"  -- 16
+
+--boolean expression
+interpreter [] "x = 2; if (x == 12/6) { x=1;}"
+interpreter [] "x = 1; y = [1,2]; if (!(x +y[1] == 5) ) { x=1;}"
+interpreter [] "x = 1;  if (x < 2) {x=1;}"
+interpreter [] "x = 4; if (x > 3) { x=1;}"
+interpreter [] "x = 2;  if (x*x <= 2*2) { x=1;}"
+interpreter [] "x = 5; y = [1,2]; if (x/x >= 2/y[1]) {x=1;}"
+
+--commands
+interpreter [] "x = 10; y = [4,2]; if (x >= y[1]) { x=1; z=[[1,2,3],[4,5,6]];} else {x=0; k=[[1,2,3],[4,5,6]];}"
+interpreter [] "x = 1; y = [4,2]; if (x >= y[1]) { x=2; z=[[1,2,3],[4,5,6]];} else {x=0; k=[[1,2,3],[4,5,6]];}"
+interpreter [] "x=1; fact=1; y=10; while (x <= y) {fact=fact*x; x=x+1;}"   --factorial of y
+interpreter [] "fact=1; y=10; for(x=1; x<=y; x=x+1;) {fact=fact*x;}"   --factorial of y
+
+interpreter [] "x=[5,4,3,2,1]; for(i=0;i<4;i=i+1;) { for(j=i+1; j<5; j=j+1;) { if(x[i]>x[j]) { temp=x[i]; x[i]=x[j]; x[j]=temp;} } }"    --Sorting array
+
