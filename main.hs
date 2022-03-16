@@ -1,30 +1,57 @@
 import Control.Applicative 
-import Data.Char
-    ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper )
+import Data.Char ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper )
 import System.IO 
+
+--import GHC.Float (float2Int, int2Float, divideFloat)
+
+data Numeric = I Int | F Float  deriving Show
+
+numericToInt:: Numeric ->  Int 
+numericToInt (I x) =  x
+numericToInt (F x) = round x 
+
+numericToFloat:: Numeric -> Float  
+numericToFloat (F x) =  x
+numericToFloat (I x) =  fromIntegral x
+
+arrayNumericToFloat:: [Numeric] ->  [Float]  
+arrayNumericToFloat [] = []
+arrayNumericToFloat (x:xs) = numericToFloat x : arrayNumericToFloat xs
+
+matrixNumericToFloat:: [[Numeric]] ->  [[Float]]  
+matrixNumericToFloat [] = []
+matrixNumericToFloat (x:xs) = arrayNumericToFloat x : matrixNumericToFloat xs
+
+checkInt :: Float -> Bool 
+checkInt n = floor n == ceiling n  
+
+numericToString :: Numeric -> String 
+numericToString (F x) = show (numericToFloat  (F x))
+numericToString (I x) = show (numericToInt  (I x))
+
 data Variable = Variable {
         name :: String,
         vtype :: String,
-        value :: [[Int]] }   --list of list so to represent single int, array, matrices es.[[1]], [[1,2]], [[1,2],[3,4]] 
+        value :: [[Numeric]] }   --list of list so to represent single int, array, matrices es.[[1]], [[1,2]], [[1,2],[3,4]] 
         deriving Show
 
 type Env = [Variable]
 
-newtype Parser a = P (Env -> String -> [(Env, a, String)])   --the parser is a function, wrapped in P
+newtype Parser a = P (Env -> String -> [(Env, a, String)])    --the parser is a function, wrapped in P
 
 parse :: Parser a -> Env -> String -> [(Env, a, String)]
 parse (P p) env inp = p env inp    --remove the dummy costructor P
 
 interpreter :: Env -> String -> String
-interpreter env xs = case (parse program env xs) of
+interpreter env xs = case (parse program env xs) of         --'program' is the program parser
         [(env, n, [])] -> showMemoryState env
         [(env, _, out)] -> error ("Unprocessed input string : " ++ out)
         [] -> error "Wrong input"
 
 showMemoryState :: Env -> String
 showMemoryState []             = []
-showMemoryState (x:xs) = (name x) ++ "=>" ++ ( if (vtype x == "Integer") then show ((value x !! 0) !! 0)    --show the only value of the only list of the list of list
-else ( if (vtype x == "Array") then show ((value x) !! 0) else  show (value x))) ++ " " ++ (showMemoryState xs)
+showMemoryState (x:xs) = (name x) ++ "=>" ++ (if (vtype x == "Numeric") then ( if (checkInt (numericToFloat ((value x !! 0) !! 0))) then (numericToString ((value x !! 0) !! 0)) else (numericToString (value x !! 0 !! 0)) )    --show the only value of the only list of the list of list
+else ( if (vtype x == "Array") then show (arrayNumericToFloat (value x !! 0)) else  show (matrixNumericToFloat (value x)))) ++ " " ++ (showMemoryState xs)
 
 --parse only the first item of the input
 item :: Parser Char
@@ -140,26 +167,49 @@ space = do {
         }
 
 int :: Parser Int          --es. parse int "-123 abc" --> [(-123," abc")]
-int = do {
-                char '-';
-                n <- nat;     --nat return the number if the parse is ok
-                return (-n);
-                }
-        Main.<|> nat
+int = do{
+		char '-';
+		n <- nat;     --nat return the number if the parse is ok
+		return (-n);
+		}
+	Main.<|>
+	 do{
+		char '+';
+		nat         --same as 'return nat'
+	 }
+    Main.<|> nat
+
+numberFloat :: Parser Float
+numberFloat = do{
+				numbersBeforeComma <- Main.many digit;
+				char '.';
+				numbersAfterComma <- Main.many digit;
+				return (read (numbersBeforeComma++"."++numbersAfterComma))
+			  }
+
+numberFloatWithSign :: Parser Float
+numberFloatWithSign = do {
+  symbol "+";
+  numberFloat;
+ } Main.<|> do {
+  symbol "-";
+  num <- numberFloat;
+  return (-num);
+ } Main.<|> numberFloat;
 
 --parse the array brackets and (eventual)spaces after them
-array :: Parser [Int]
+array :: Parser [Numeric]
 array = do {
-                char '[';                   --parse the [
-                space;                      --parse 0 o more spaces
-                a <- arrayContent;          --parse the array content
-                space;
-                char ']';
-                return a;
+			char '[';                   --parse the [
+			space;                      --parse 0 o more spaces
+			a <- arrayContent;          --parse the array content
+			space;
+			char ']';
+			return a;
         }
 
 --parse the array elements, spaces and commas after them
-arrayContent :: Parser [Int]
+arrayContent :: Parser [Numeric]
 arrayContent = do {
                 a0 <- aexp;       --parse the first element of the array
                 space;
@@ -175,7 +225,7 @@ arrayContent = do {
         }
 
 --parse the matrix external brackets and (eventual)spaces after them
-matrix :: Parser [[Int]]
+matrix :: Parser [[Numeric]]
 matrix = do {
                 char '[';
                 space;
@@ -186,7 +236,7 @@ matrix = do {
         }
 
 --parse all the arrays which composes the matrix
-matrixContent :: Parser [[Int]]
+matrixContent :: Parser [[Numeric]]
 matrixContent = do {
                 space;
                 a0 <- array;      --parse the first list(row) of the 'list of list'(matrix)
@@ -214,14 +264,17 @@ token p = do {
 identifier :: Parser String
 identifier = token ident
 
-tokenArray :: Parser [Int]
+tokenArray :: Parser [Numeric]
 tokenArray = token array
 
-tokenMatrix :: Parser [[Int]]
+tokenMatrix :: Parser [[Numeric]]
 tokenMatrix = token matrix
 
 integer :: Parser Int
 integer = token int
+
+float :: Parser Float
+float = token numberFloat
 
 symbol :: String -> Parser String
 symbol xs = token (string xs)
@@ -230,34 +283,34 @@ symbol xs = token (string xs)
 --enviroment management
 
 -- Return the value of a variable given the name (and given the indeces in case of array or matrix)
-readVariable :: String -> Parser Int
+readVariable :: String -> Parser Numeric
 readVariable name = P (\env input -> case searchVariable env name of
         [[]] -> []
         [[value]] -> [(env, value, input)])
 
-readArrayVariable :: String -> Int -> Parser Int
+readArrayVariable :: String -> Int -> Parser Numeric
 readArrayVariable name j = P (\env input -> case searchArrayVariable env name j of
         [[]] -> []
         [[value]] -> [(env, value, input)])
 
-readMatrixVariable :: String -> Int -> Int -> Parser Int
+readMatrixVariable :: String -> Int -> Int -> Parser Numeric
 readMatrixVariable name j k = P (\env input -> case searchMatrixVariable env name j k of
         [[]] -> []
         [[value]] -> [(env, value, input)])
 
 -- Search the value of a variable given the name (and indeces in case of array or matrix)
 -- if the env list is empty there is no variable, if it isn't empty check the head and if is isn't the searched variable check ricursively the tail
-searchVariable :: Env -> String -> [[Int]]
+searchVariable :: Env -> String -> [[Numeric]]
 searchVariable [] queryname = []
 searchVariable (x:xs) queryname = if (name x) == queryname then [[((value x) !! 0) !! 0]]   --takes: [[int]], [int], int
 else searchVariable xs queryname
 
-searchArrayVariable :: Env -> String -> Int -> [[Int]]
+searchArrayVariable :: Env -> String -> Int -> [[Numeric]]
 searchArrayVariable [] queryname j = [[]]
 searchArrayVariable (x:xs) queryname j = if ((name x) == queryname) then [[((value x) !! 0) !! j]]  --takes the element j of the only list in [[int]]
 else searchArrayVariable xs queryname j
 
-searchMatrixVariable :: Env -> String -> Int -> Int -> [[Int]]
+searchMatrixVariable :: Env -> String -> Int -> Int -> [[Numeric]]
 searchMatrixVariable [] queryname j k = [[]]
 searchMatrixVariable (x:xs) queryname j k = if ((name x) == queryname) then [[((value x) !! j) !! k]]    --takes the element at row j and column k (takes list j in [[int]] and then its element k)
 else searchMatrixVariable xs queryname j k
@@ -277,45 +330,59 @@ modifyEnv (x:xs) newVar = if name x == name newVar then newVar : xs else x : mod
 --parser for arithmetic expressions, also evaluate them
 
 -- aexp := <aterm> + <aexp> | <aterm> - <aexp> | <aterm>
-aexp :: Parser Int
+aexp :: Parser Numeric
 aexp = do {
         do {
             t <- aterm;      --store the output of the 'aterm' parser in t
             symbol "+";      --parse the +
             a <- aexp;       --recursively parse other aexp
-            return (t + a);  --executes the operation specified in the parsed instructions
+            return (F (numericToFloat t + numericToFloat a))    --executes the operation specified in the parsed instructions
         }
         Main.<|>
         do {
 			t <- aterm;
 			symbol "-";
 			a <- aexp;
-			return (t - a);
+			return (F (numericToFloat t - numericToFloat a))
         }
         Main.<|> aterm
       }
 
 -- aterm := <afactor> * <aterm> | <afactor> / <aterm> | <afactor>
-aterm :: Parser Int
+aterm :: Parser Numeric
 aterm = do {
 			do {
 				f <- afactor;
 				symbol "*";
 				t <- aterm;
-				return (f * t);
+				return (F (numericToFloat f * numericToFloat t))
 			}
-          Main.<|>
+        Main.<|>
 			do{
 				f <- afactor;
 				symbol "/";
 				t <- aterm;
-				return (f `div` t);
+				return (F (numericToFloat f / numericToFloat t))
 			}
-          Main.<|> afactor
+		Main.<|>
+			do{
+				f <- afactor;
+				symbol "^";
+				t <- aterm;
+				return (F (numericToFloat f ** numericToFloat t))
+			}
+		Main.<|>
+			do{
+				f <- afactor;
+				symbol "%";
+				t <- aterm;
+				return (I (numericToInt f  `mod` numericToInt t))
+			}
+        Main.<|> afactor
         }
 
--- afactor := (<aexp>) | <identifier>[<aexp>][<aexp>] | <identifier>[<aexp>] | <identifier> | <integer>
-afactor :: Parser Int
+-- afactor := (<aexp>) | <identifier>[<aexp>][<aexp>] | <identifier>[<aexp>] | <identifier> | <integer> | <float>
+afactor :: Parser Numeric
 afactor = do {
 				do{
 					symbol "(";
@@ -332,7 +399,7 @@ afactor = do {
 					symbol "[";
 					k <- aexp;
 					symbol "]";
-					readMatrixVariable i j k;      --read i[j][k]
+					readMatrixVariable i (numericToInt j) (numericToInt k);      --read i[j][k]
 				}
 				Main.<|>
 				do{
@@ -340,14 +407,15 @@ afactor = do {
 					symbol "[";
 					j <- aexp;
 					symbol "]";
-					readArrayVariable i j;
+					readArrayVariable i (numericToInt j);
 				}
 				Main.<|>
 				do{
 					i <- identifier;
 					readVariable i;
-				}
-				Main.<|> integer
+				}				 
+				Main.<|> (F <$> float)         --first float parser then int to avoid error when parsing floats
+				Main.<|> (I <$> integer)
             }
 
 -- parse Arithmetic Expressions without evaluating them
@@ -414,9 +482,10 @@ consumeAfactor = do {
 							symbol "]";
 							return (i ++ "[" ++ j ++ "]");
 						}
-						Main.<|> do { identifier }           --only parse the identifier
-						Main.<|> do { show <$> integer }    --apply show to the wrapped int, trasforming it in a string
-       				}
+						Main.<|> do identifier          --only parse the identifier
+						Main.<|> (show <$> float)       --first float parser then int to avoid error when parsing floats 
+						Main.<|> (show <$> integer)     --apply show to the wrapped int, trasforming it in a string
+					}
 
 
 
@@ -480,35 +549,35 @@ bcomparison = do {
 						a0 <- aexp;
 						symbol "==";
 						a1 <- aexp;
-						return ( a0 == a1);
+						return ( numericToInt a0 == numericToInt a1);
 					}
 					Main.<|>
 					do{
 						a0 <- aexp;
 						symbol "<";
 						a1 <- aexp;
-						return ( a0 < a1);
+						return ( numericToInt a0 < numericToInt a1);
 					}
 					Main.<|>
 					do{
 						a0 <- aexp;
 						symbol "<=";
 						a1 <- aexp;
-						return ( a0 <= a1);
+						return (numericToInt a0 <= numericToInt a1);
 					}
 					Main.<|>
 					do{
 						a0 <- aexp;
 						symbol ">";
 						a1 <- aexp;
-						return ( a0 > a1);
+						return ( numericToInt a0 > numericToInt a1);
 					}
 					Main.<|>
 					do{
 						a0 <- aexp;
 						symbol ">=";
 						a1 <- aexp;
-						return ( a0 >= a1);
+						return ( numericToInt a0 >= numericToInt a1);
 					}
 				}
 
@@ -640,7 +709,7 @@ assignment = do{
 				symbol "=";
 				v <- aexp;
 				symbol ";";
-				updateEnv Variable{name=x,vtype="Integer", value= [[v]]};
+				updateEnv Variable{name=x,vtype="Numeric", value= [[v]]};
 			}
 
 -- <arrayAssignment> := <identifier> '=' <tokenArray> ';'
