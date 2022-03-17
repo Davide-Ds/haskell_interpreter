@@ -2,7 +2,6 @@ import Control.Applicative
 import Data.Char ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper )
 import System.IO 
 
---import GHC.Float (float2Int, int2Float, divideFloat)
 
 data Numeric = I Int | F Float  deriving Show
 
@@ -14,20 +13,24 @@ numericToFloat:: Numeric -> Float
 numericToFloat (F x) =  x
 numericToFloat (I x) =  fromIntegral x
 
-arrayNumericToFloat:: [Numeric] ->  [Float]  
-arrayNumericToFloat [] = []
-arrayNumericToFloat (x:xs) = numericToFloat x : arrayNumericToFloat xs
+--format array to print it
+arrayNumericToString:: [Numeric] ->  String  
+arrayNumericToString [] = "]"
+arrayNumericToString (x:xs) | checkInt (numericToFloat x) =  if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
+                            | otherwise = if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
 
-matrixNumericToFloat:: [[Numeric]] ->  [[Float]]  
-matrixNumericToFloat [] = []
-matrixNumericToFloat (x:xs) = arrayNumericToFloat x : matrixNumericToFloat xs
+--format array to print it
+matrixNumericToString:: [[Numeric]] ->  String  
+matrixNumericToString [] = []
+matrixNumericToString (x:xs) = "[" ++ if null xs then arrayNumericToString x ++ "" ++ matrixNumericToString xs else arrayNumericToString x ++ "," ++ matrixNumericToString xs
 
-checkInt :: Float -> Bool 
+checkInt :: Float -> Bool              --check if a float is an integer e.g. 17.0
 checkInt n = floor n == ceiling n  
 
+--print int and float. Float ending with .0 will be printed as int
 numericToString :: Numeric -> String 
-numericToString (F x) = show (numericToFloat  (F x))
-numericToString (I x) = show (numericToInt  (I x))
+numericToString (F x) = if checkInt (numericToFloat (F x)) then show (numericToInt (F x)) else show (numericToFloat (F x)) 
+numericToString (I x) = show (numericToInt (I x))
 
 data Variable = Variable {
         name :: String,
@@ -50,8 +53,9 @@ interpreter env xs = case (parse program env xs) of         --'program' is the p
 
 showMemoryState :: Env -> String
 showMemoryState []             = []
-showMemoryState (x:xs) = (name x) ++ "=>" ++ (if (vtype x == "Numeric") then ( if (checkInt (numericToFloat ((value x !! 0) !! 0))) then (numericToString ((value x !! 0) !! 0)) else (numericToString (value x !! 0 !! 0)) )    --show the only value of the only list of the list of list
-else ( if (vtype x == "Array") then show (arrayNumericToFloat (value x !! 0)) else  show (matrixNumericToFloat (value x)))) ++ " " ++ (showMemoryState xs)
+showMemoryState (x:xs) | vtype x == "Numeric" = name x ++ "=" ++ numericToString (value x !! 0 !! 0) ++ " " ++ showMemoryState xs         --(value x !! 0 !! 0) take the first element of the first list in [[Numeric]]
+                       | vtype x == "Array" = name x ++ "=" ++ "[" ++ arrayNumericToString (value x !! 0) ++ " " ++ showMemoryState xs    --(value x !! 0) take the first list in [[Numeric]]
+					   | otherwise = name x ++ "=" ++ "[" ++ matrixNumericToString (value x) ++ "] " ++ " " ++ showMemoryState xs         --vtype is matrix so (value x) take all [[Numeric]]
 
 --parse only the first item of the input
 item :: Parser Char
@@ -274,7 +278,7 @@ integer :: Parser Int
 integer = token int
 
 float :: Parser Float
-float = token numberFloat
+float = token numberFloatWithSign
 
 symbol :: String -> Parser String
 symbol xs = token (string xs)
@@ -369,7 +373,10 @@ aterm = do {
 				f <- afactor;
 				symbol "^";
 				t <- aterm;
-				return (F (numericToFloat f ** numericToFloat t))
+				if checkInt (numericToFloat f) then 
+				   return (I (numericToInt f ^ numericToInt t)) 
+				else 
+				   return (F (numericToFloat f ** numericToFloat t))				
 			}
 		Main.<|>
 			do{
