@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
 import Control.Applicative 
 import Data.Char ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper )
 import System.IO 
@@ -459,6 +461,20 @@ consumeAterm = do {
 						t <- consumeAterm;
 						return (f ++ "/" ++ t);
 					}
+					Main.<|>
+					do{
+						f <- consumeAfactor;
+						symbol "^";
+						t <- consumeAterm;
+						return (f ++ "^" ++ t);
+					}
+					Main.<|>
+					do{
+						f <- consumeAfactor;
+						symbol "%";
+						t <- consumeAterm;
+						return (f ++ "%" ++ t);
+					}
 					Main.<|> consumeAfactor
 				}
 
@@ -699,6 +715,8 @@ command = do{
 				Main.<|>
 				do ifThenElse;
 				Main.<|>
+				do switch;
+				Main.<|>
 				do while;
 				Main.<|>
 				do for;
@@ -770,6 +788,40 @@ ifThenElse = do {
 							Main.<|> return ""			--in case there is no 'else' branch		
 						}
 			}
+
+-- <switch>:= ‘switch’ ‘(‘ aexp ‘)’ ‘{’<case_stmt>’}’ 
+switch :: Parser String
+switch = do { 
+	        symbol "switch";
+			a <- aexp;
+			symbol "{";
+			case_stmt a;    -- the Numeric 'a' will be compared with the 'case' condition
+			symbol "}";
+			}
+
+-- <case_stmt> :=  ‘case’ <integer> ‘:’ <program> <case_stmt> | ‘default’ ‘:’ <program>  
+case_stmt :: Numeric -> Parser String
+case_stmt  a = do { 
+				symbol "case";
+				i <- integer;
+				symbol ":";
+				if i == numericToInt a then          --if the 'case' condition match the aexp then its code is executed and the rest of the switch only parsed
+				 		do { 
+				 			program;
+				 			consumeCase_stmt;
+				 			}
+				else do { 				 			--if the 'case' condition is not matched by the aexp then its code is parsed and are tried the other case
+						consumeProgram;
+						case_stmt a;
+						}		
+				}
+			Main.<|>
+			do {                        -- if no case condition is matched then is execuded the default branch
+				symbol "default";
+				symbol ":";
+				program;
+			}
+
 
 -- while := while (<bexp>) {<program>}
 while :: Parser String
@@ -872,6 +924,8 @@ consumeCommand = do{
 					Main.<|>
 					do{consumeifThenElse;}
 					Main.<|>
+					do{consumeSwitch;}
+					Main.<|>
 					do{consumeWhile;}
 					Main.<|>
 					do{consumeFor;}
@@ -880,7 +934,7 @@ consumeCommand = do{
 						symbol "skip";
 						symbol ";";
 						return "skip;"
-					}
+					}			
 				}
 
 consumeAssignment :: Parser String
@@ -983,6 +1037,33 @@ consumeifThenElse = do{
 							return (" if " ++ b ++ " { " ++ p0 ++ " } " ++ " else { " ++ p1 ++ " } ");
 						}
 						Main.<|> return (" if " ++ b ++ " { " ++ p0 ++ " } ")
+					}
+
+consumeSwitch :: Parser String
+consumeSwitch = do { 
+					symbol "switch";
+					a <- consumeAexp;
+					symbol "{";
+					c <- consumeCase_stmt;
+					symbol "}";
+					return ("switch" ++ a ++ "{" ++ c ++ "}");
+				   }
+
+-- <case_stmt> :=  ‘case’ <integer> ‘:’ <program> <case_stmt> | ‘default’ ‘:’ <program>  
+consumeCase_stmt :: Parser String
+consumeCase_stmt = do { 
+						symbol "case";
+						i <- integer;
+						symbol ":";
+						p <- consumeProgram;				
+						c <- consumeCase_stmt;
+						return ("case" ++ show i ++ ":" ++ p ++ c );		
+						}
+					Main.<|>
+					do {
+						symbol "default";
+						symbol ":";
+						consumeProgram;
 					}
 
 
