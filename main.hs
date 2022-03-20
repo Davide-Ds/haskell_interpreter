@@ -1,9 +1,6 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use camelCase" #-}
 import Control.Applicative 
-import Data.Char ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper )
+import Data.Char ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper, isPunctuation )
 import System.IO 
-
 
 data Numeric = I Int | F Float  deriving Show
 
@@ -37,7 +34,7 @@ numericToString (I x) = show (numericToInt (I x))
 data Variable = Variable {
         name :: String,
         vtype :: String,
-        value :: [[Numeric]] }   --list of list so to represent single int, array, matrices es.[[1]], [[1,2]], [[1,2],[3,4]] 
+        value :: [[Numeric]] }   --list of list so to represent single numbers, array, matrices es.[[1]], [[1,2]], [[1,2],[3,4]] 
         deriving Show
 
 type Env = [Variable]
@@ -45,7 +42,7 @@ type Env = [Variable]
 newtype Parser a = P (Env -> String -> [(Env, a, String)])    --the parser is a function, wrapped in P
 
 parse :: Parser a -> Env -> String -> [(Env, a, String)]
-parse (P p) env inp = p env inp    --remove the dummy costructor P
+parse (P p) env inp = p env inp    --remove the dummy costructor P and does the parsing using the parser p
 
 interpreter :: Env -> String -> String
 interpreter env xs = case (parse program env xs) of         --'program' is the program parser
@@ -98,14 +95,6 @@ class Applicative f => Alternative f where
         many x = Main.some x Main.<|> pure []
         some x = (:) <$> x <*> Main.many x    --concatenate 1 or more elements x:xs or x:[]
 
-instance Main.Alternative Maybe where
-        -- empty :: Maybe a
-        empty = Nothing
-
-        -- (<|>) :: Maybe a -> Maybe a -> Maybe a
-        Nothing <|> my = my
-        (Just x) <|> _ = Just x
-
 instance Main.Alternative Parser where
         -- empty :: Parser a
         empty = P (\env inp -> [])
@@ -135,7 +124,7 @@ letter :: Parser Char
 letter = satisfy isAlpha
 
 alphanum :: Parser Char
-alphanum = satisfy isAlphaNum
+alphanum = do satisfy isAlphaNum -- Main.<|> satisfy isPunctuation
 
 char :: Char -> Parser Char
 char x = satisfy (== x)       -- es. parse (char 'a') [] "abc"  produces [([], 'a', "bc")]
@@ -294,11 +283,18 @@ readVariable name = P (\env input -> case searchVariable env name of
         [[]] -> []
         [[value]] -> [(env, value, input)])
 
+readWholeArray :: String -> Parser [Numeric]
+readWholeArray name = P (\env input -> case searchVariable env name of
+        [[]] -> []
+        [x:xs] -> [(env, x:xs, input)])		
+
+-- read single array elements eg.x[i]
 readArrayVariable :: String -> Int -> Parser Numeric
 readArrayVariable name j = P (\env input -> case searchArrayVariable env name j of
         [[]] -> []
         [[value]] -> [(env, value, input)])
 
+-- read single matrix elements eg.x[i][j]
 readMatrixVariable :: String -> Int -> Int -> Parser Numeric
 readMatrixVariable name j k = P (\env input -> case searchMatrixVariable env name j k of
         [[]] -> []
@@ -308,13 +304,20 @@ readMatrixVariable name j k = P (\env input -> case searchMatrixVariable env nam
 -- if the env list is empty there is no variable, if it isn't empty check the head and if is isn't the searched variable check ricursively the tail
 searchVariable :: Env -> String -> [[Numeric]]
 searchVariable [] queryname = []
-searchVariable (x:xs) queryname = if (name x) == queryname then [[((value x) !! 0) !! 0]]   --takes: [[int]], [int], int
-else searchVariable xs queryname
+searchVariable (x:xs) queryname|(name x == queryname) && (vtype x == "Array") = [(value x) !! 0]           --get: [[Numeric]], [Numeric]
+                               |name x == queryname = [[((value x) !! 0) !! 0]]                            --get: [[Numeric]], [Numeric], Numeric 
+							   |otherwise = searchVariable xs queryname
 
+-- search single array elements eg.x[i]
 searchArrayVariable :: Env -> String -> Int -> [[Numeric]]
 searchArrayVariable [] queryname j = [[]]
-searchArrayVariable (x:xs) queryname j = if ((name x) == queryname) then [[((value x) !! 0) !! j]]  --takes the element j of the only list in [[int]]
+searchArrayVariable (x:xs) queryname j = if ((name x) == queryname) then [[((value x) !! 0) !! j]]   --takes the element j of the only list in [[int]]
 else searchArrayVariable xs queryname j
+
+-- replace an element in an array with a new one
+replace :: Int -> a -> [a] -> [a]
+replace pos newVal list | length list >= pos = take pos list ++ newVal : drop (pos+1) list
+                        | otherwise = list 
 
 searchMatrixVariable :: Env -> String -> Int -> Int -> [[Numeric]]
 searchMatrixVariable [] queryname j k = [[]]
@@ -711,6 +714,8 @@ command = do{
 				Main.<|>
 				do arrayAssignment;
 				Main.<|>
+				do arrayValueAssignment;
+				Main.<|>
 				do matrixAssignment;
 				Main.<|>
 				do ifThenElse;
@@ -744,8 +749,23 @@ arrayAssignment = do{
 						symbol "=";
 						v <- tokenArray;
 						symbol ";";
-						updateEnv Variable{name=x, vtype="Array", value= [v]};   -- v=[int]
+						updateEnv Variable{name=x, vtype="Array", value= [v]};   -- v=[Numeric]
 					}
+
+
+-- assign a new value in a given position of an array 
+arrayValueAssignment :: Parser String
+arrayValueAssignment = do{
+							x <- identifier;
+							symbol "[";
+							i <- aexp;
+							symbol "]";
+							symbol "=";
+							v <- aexp;
+							symbol ";";
+							arr <- readWholeArray x;
+							updateEnv Variable{name=x, vtype="Array", value= [replace (numericToInt i) v arr]};
+						}
 
 -- <matrixAssignment> := <identifier> '=' <tokenMatrix> ';'
 matrixAssignment :: Parser String
@@ -918,6 +938,8 @@ consumeCommand :: Parser String
 consumeCommand = do{
 					do{consumeAssignment;}
 					Main.<|>
+				    do consumeArrayValueAssignment;
+					Main.<|>
 					do{consumeArrayAssignment;}
 					Main.<|>
 					do{consumeMatrixAssignment;}
@@ -945,6 +967,18 @@ consumeAssignment = do{
 						symbol ";";
 						return (x ++ "=" ++ a ++ ";");
 					  }
+
+consumeArrayValueAssignment :: Parser String
+consumeArrayValueAssignment = do{
+								x <- identifier;
+								symbol "[";
+								i <- consumeAexp;
+								symbol "]";
+								symbol "=";
+								v <- consumeAexp;
+								symbol ";";
+								return (x ++ "[" ++ i ++ "]" ++ "=" ++ v ++ ";")
+								}
 
 consumeArrayAssignment :: Parser String
 consumeArrayAssignment = do{
