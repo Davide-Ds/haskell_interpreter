@@ -60,9 +60,17 @@ modifyEnv :: Env -> Variable -> Env
 modifyEnv [] var = [var]
 modifyEnv (x:xs) newVar = if name x == name newVar then newVar : xs else x : modifyEnv xs newVar
 
---print the environment content
+--print the environment content without type information
 showMemoryState :: Env -> String
 showMemoryState []             = []
 showMemoryState (x:xs) | vtype x == "Numeric" = name x ++ "=" ++ numericToString (value x !! 0 !! 0) ++ " " ++ showMemoryState xs         --(value x !! 0 !! 0) take the first element of the first list in [[Numeric]]
                        | vtype x == "Array" = name x ++ "=" ++ "[" ++ arrayNumericToString (value x !! 0) ++ " " ++ showMemoryState xs    --(value x !! 0) take the first list in [[Numeric]]
 					   | otherwise = name x ++ "=" ++ "[" ++ matrixNumericToString (value x) ++ "] " ++ " " ++ showMemoryState xs         --vtype is matrix so (value x) take all [[Numeric]]
+
+--print raw environment content
+getMemory :: [(Env, String, String)] -> String
+getMemory [] = "Invalid input\n"
+getMemory [(x:xs, parsedString, "")] = vtype x ++ "  " ++ name x ++ " = " ++ show (value x) ++ "\n" ++ getMemory [(xs,parsedString,"")]
+getMemory [(env, parsedString, unparsedString)] = case unparsedString of
+    "" -> ""
+    _  -> "Error (unused input '" ++ unparsedString ++ "')\n" ++ getMemory [(env,parsedString, "")]

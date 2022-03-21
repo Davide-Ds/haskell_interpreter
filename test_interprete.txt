@@ -1,50 +1,50 @@
 --assignment
-interpreter [] "x=1;"
-interpreter [] "x=1; aaaaa"
+x=1;
+x=1; aaaaa
 
 --array assignement
-interpreter [] "x=[1,2,3,54,9.1,2.3];"
+x=[1,2,3,54,9.1,2.3];
 
 --matrix assignement
-interpreter [] "x=[[16, 26.6, 5.43, 3] , [54, 91.23, 0.2, 17]];"   --2 rows, different num of column
+x=[[16, 26.6, 5.43, 3] , [54, 91.23, 0.2, 17]];   --2 rows, different num of column
 
 --variable access
-interpreter [] "x=1; i=x+1;"
+x=1; i=x+1;
 
 --array access
-interpreter [] "x=[3.0,4.2,3.12]; i=x[0]; j=x[1]; k=x[2];"
-interpreter [] "y=1; x=[-1,-5.4,9.1,23]; zeta=x[y];"
+x=[3.0,4.2,3.12]; i=x[0]; j=x[1]; k=x[2];
+y=1; x=[-1,-5.4,9.1,23]; zeta=x[y];
 --index to large
-interpreter [] "x=[1,2,3]; i=x[9];"
+x=[1,2,3]; i=x[9];
 
 --matrix access
-interpreter [] "x=[[16, 5.43, 32],[54, 9.123, 0, 1.7]]; i=x[0][0]; j=x[1][3]; k=x[1][2];"
+x=[[16, 5.43, 32],[54, 9.123, 0, 1.7]]; i=x[0][0]; j=x[1][3]; k=x[1][2];
 
 --arithmetic expression  
-interpreter [] "x= -2^3; y=6.2^2; z=3^4;"      
-interpreter [] "x= 7 % 9 + 4 % 2;"     -- 7         
-interpreter [] "x= 1 + 2*20 /5 -9;"     -- 0
-interpreter [] "x= 7+4+1/5-20/100;"     -- 11
-interpreter [] "x= 21/(47+21)-3;"       -- -2,69
-interpreter [] "x= 6-8.9;"               -- -2.9
-interpreter [] "x= 2/3;"                -- 0.66 
-interpreter [] "x=[[-1,2,-3.2],[6,-5.2,4]]; y=[7,8,9]; i=x[0][2] * y[1] + x[1][2] -12 * x[0][0];"  -- -9.6
+x= -2^3; y=6.2^2; z=3^4;      
+x= 7 % 9 + 4 % 2;     -- 7         
+x= 1 + 2*20 /5 -9;     -- 0
+x= 7+4+1/5-20/100;     -- 11
+x= 21/(47+21)-3;       -- -2,69
+x= 6-8.9;               -- -2.9
+x= 2/3;                -- 0.66 
+x=[[-1,2,-3.2],[6,-5.2,4]]; y=[7,8,9]; i=x[0][2] * y[1] + x[1][2] -12 * x[0][0];  -- -9.6
 
 --boolean expression
-interpreter [] "x = 2; if (x == 12/6) { x=1;}"
-interpreter [] "x = 1; y = [1,2]; if (!(x +y[1] == 5) ) { x=1;}"
-interpreter [] "x = 1;  if (x < 2) {x=1;}"
-interpreter [] "x = 4; if (x > 3) { x=1;}"
-interpreter [] "x = 2;  if (x*x <= 2*2) { x=1;}"
-interpreter [] "x = 5; y = [1,2]; if (x/x >= 2/y[1]) {x=1;}"
+x = 2; if (x == 12/6) { x=1;}
+x = 1; y = [1,2]; if (!(x +y[1] == 5) ) { x=1;}
+x = 1;  if (x < 2) {x=1;}
+x = 4; if (x > 3) { x=1;}
+x = 2;  if (x*x <= 2*2) { x=1;}
+x = 5; y = [1,2]; if (x/x >= 2/y[1]) {x=1;}
 
 --commands
-interpreter [] "x = [10, 9]; y = [4,2]; i=1; j=0; if(x[i] > y[j]) { x=1; z=[[1.0,2,3],[4,-5.1,6]];} else {x=0; k=[[1.4,2,3],[4,5,-6]];}"
-interpreter [] "x = 19; y = [4,2]; if (x >= y[1]) { x=2; z=[[1,2.12,3],[4,5,-6.4]];} else {x=10^2%5; k=[[1,2,-3.1],[-4,5,6]];}"
-interpreter [] "x=1; fact=1; y=10; while (x <= y) {fact=fact*x; x=x+1;}"   --factorial of y
-interpreter [] "fact=1; y=10; for(x=1; x<=y; x=x+1;) {fact=fact*x;}"   --factorial of y
-interpreter [] "y=2*6; switch(y) {case 1:x=1; case 2: x=2; case 12: x=3; default: x=4;}"
-interpreter [] "y=21/7; switch(y) {case 1: x=1 +4 -6.7; z=[2.1,41]; case 2: x=2 * 4 % 3; case 3: x=3/9; k=[[-2,3],[6.43,-1.2]]; default: x=4%2;}"
-interpreter [] "y=3.8; switch(1) {case 1: while(y<8){y=y+1;} case 2:if(y>29){x=1;} else{k=5;} default:fact=1; y=10; for(x=1; x<=y; x=x+1;) {fact=fact*x;}}"  
-interpreter [] "x=[4,8,1]; temp=0; for(i=0; i<2; i=i+1;) { for(j=i+1; j<3; j=j+1;) { if(x[i] > x[j]) { temp=x[i]; x[i]=x[j]; x[j]=temp; } } }"    --Sorting array
+x = [10, 9]; y = [4,2]; i=1; j=0; if(x[i] > y[j]) { x=1; z=[[1.0,2,3],[4,-5.1,6]];} else {x=0; k=[[1.4,2,3],[4,5,-6]];}
+x = 19; y = [4,2]; if (x >= y[1]) { x=2; z=[[1,2.12,3],[4,5,-6.4]];} else {x=10^2%5; k=[[1,2,-3.1],[-4,5,6]];}
+x=1; fact=1; y=10; while (x <= y) {fact=fact*x; x=x+1;}   --factorial of y
+fact=1; y=10; for(x=1; x<=y; x=x+1;) {fact=fact*x;}   --factorial of y
+y=2*6; switch(y) {case 1:x=1; case 2: x=2; case 12: x=3; default: x=4;}
+y=21/7; switch(y) {case 1: x=1 +4 -6.7; z=[2.1,41]; case 2: x=2 * 4 % 3; case 3: x=3/9; k=[[-2,3],[6.43,-1.2]]; default: x=4%2;}
+y=3.8; switch(1) {case 1: while(y<8){y=y+1;} case 2:if(y>29){x=1;} else{k=5;} default:fact=1; y=10; for(x=1; x<=y; x=x+1;) {fact=fact*x;}}  
+x=[4,8,1]; temp=0; for(i=0; i<2; i=i+1;) { for(j=i+1; j<3; j=j+1;) { if(x[i] > x[j]) { temp=x[i]; x[i]=x[j]; x[j]=temp; } } }    --Sorting array
 
