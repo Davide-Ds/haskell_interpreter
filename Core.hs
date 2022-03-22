@@ -17,7 +17,7 @@ type Env = [Variable]
 newtype Parser a = P (Env -> String -> [(Env, a, String)])    --the parser is a function, wrapped in P
 
 parse :: Parser a -> Env -> String -> [(Env, a, String)]
-parse (P p) env inp = p env inp    --remove the dummy costructor P and does the parsing using the parser p
+parse (P p) = p     --remove the dummy costructor P and does the parsing using the parser p
 
 
 --parse only the first item of the input
@@ -126,24 +126,24 @@ space = do {
 
 int :: Parser Int          --es. parse int "-123 abc" --> [(-123," abc")]
 int = do{
-		char '-';
-		n <- nat;     --nat return the number if the parse is ok
-		return (-n);
-		}
+          char '-';
+          n <- nat;     --nat return the number if the parse is ok
+          return (-n);
+        }
 	Core.<|>
 	 do{
-		char '+';
-		nat         --same as 'return nat'
+           char '+';
+           nat         --same as 'return nat'
 	 }
     Core.<|> nat
 
 numberFloat :: Parser Float
 numberFloat = do{
-				numbersBeforeComma <- Core.many digit;
-				char '.';
-				numbersAfterComma <- Core.many digit;
-				return (read (numbersBeforeComma++"."++numbersAfterComma))
-			  }
+                numbersBeforeComma <- Core.many digit;
+                char '.';
+                numbersAfterComma <- Core.many digit;
+                return (read (numbersBeforeComma++"."++numbersAfterComma))
+                }
 
 numberFloatWithSign :: Parser Float
 numberFloatWithSign = do {
@@ -193,7 +193,7 @@ arrayNumericToString [] = "]"
 arrayNumericToString (x:xs) | checkInt (numericToFloat x) =  if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
                             | otherwise = if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
 
---format array to print it
+--format matrix to print it
 matrixNumericToString:: [[Numeric]] ->  String  
 matrixNumericToString [] = []
 matrixNumericToString (x:xs) = "[" ++ if null xs then arrayNumericToString x ++ "" ++ matrixNumericToString xs else arrayNumericToString x ++ "," ++ matrixNumericToString xs

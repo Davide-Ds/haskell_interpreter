@@ -26,7 +26,7 @@ aexp = do {
         <|> aterm
       }
 
--- aterm := <afactor> * <aterm> | <afactor> / <aterm> | <afactor>
+-- aterm := <afactor> * <aterm> | <afactor> / <aterm> | <afactor> ^ <aterm> | <afactor> % <aterm> |<afactor>
 aterm :: Parser Numeric
 aterm = do {
 			do {
@@ -152,7 +152,7 @@ bfactor = do{
 			 	<|> bcomparison				
 		    }
 
--- bcomparison := <aexp> == <aexp> | <aexp> < <aexp> | <aexp> <= <aexp> | <aexp> > <aexp> | <aexp> >= <aexp>
+-- bcomparison := <aexp> == <aexp> | <aexp> != <aexp> |<aexp> < <aexp> | <aexp> <= <aexp> | <aexp> > <aexp> | <aexp> >= <aexp>
 bcomparison:: Parser Bool
 bcomparison = do {
 					do{
@@ -160,6 +160,13 @@ bcomparison = do {
 						symbol "==";
 						a1 <- aexp;
 						return ( numericToInt a0 == numericToInt a1);
+					}
+					<|>
+					do{
+						a0 <- aexp;
+						symbol "!=";
+						a1 <- aexp;
+						return ( numericToInt a0 /= numericToInt a1);
 					}
 					<|>
 					do{
@@ -203,7 +210,7 @@ program = do {
 				<|> command
 			}
 
--- command := <assignment> | <arrayAssignment> | <matrixAssignment> | <ifThenElse> | <while> | <for> | ‘skip’ ‘;’
+-- command := <assignment> | <arrayAssignment> | <arrayValueAssignment> | <matrixAssignment> | <ifThenElse> | <switch> | <while> | <for> | ‘skip’ ‘;’
 command :: Parser String
 command = do{
 				do assignment;
@@ -249,7 +256,7 @@ arrayAssignment = do{
 					}
 
 
--- assign a new value in a given position of an array 
+-- <arrayValueAssignment> := <identifier>[i] '=' <aexp> ';' 
 arrayValueAssignment :: Parser String
 arrayValueAssignment = do{
 							x <- identifier;
@@ -260,7 +267,7 @@ arrayValueAssignment = do{
 							v <- aexp;
 							symbol ";";
 							arr <- readWholeArray x;
-							updateEnv Variable{name=x, vtype="Array", value= [replace (numericToInt i) v arr]};
+							updateEnv Variable{name=x, vtype="Array", value= [replace (numericToInt i) v arr]};     --replace the old array with the one containing the new value
 						}
 
 -- <matrixAssignment> := <identifier> '=' <tokenMatrix> ';'
@@ -305,17 +312,17 @@ ifThenElse = do {
 						}
 			}
 
--- <switch>:= ‘switch’ ‘(‘ aexp ‘)’ ‘{’<case_stmt>’}’ 
+-- <switch>:= switch ( aexp ) { <case_stmt> } 
 switch :: Parser String
 switch = do { 
 	        symbol "switch";
-			a <- aexp;
+			a <- aexp;          -- aexp already parse the ( )
 			symbol "{";
 			case_stmt a;    -- the Numeric 'a' will be compared with the 'case' condition
 			symbol "}";
 			}
 
--- <case_stmt> :=  ‘case’ <integer> ‘:’ <program> <case_stmt> | ‘default’ ‘:’ <program>  
+-- <case_stmt> :=  case <integer> : <program> <case_stmt> | default : <program>  
 case_stmt :: Numeric -> Parser String
 case_stmt  a = do { 
 				symbol "case";
@@ -324,7 +331,7 @@ case_stmt  a = do {
 				if i == numericToInt a then          --if the 'case' condition match the aexp then its code is executed and the rest of the switch only parsed
 				 		do { 
 				 			program;
-				 			consumeCase_stmt;
+				 			consumeCaseStmt;
 				 			}
 				else do { 				 			--if the 'case' condition is not matched by the aexp then its code is parsed and are tried the other case
 						consumeProgram;
@@ -364,13 +371,14 @@ while = do {
 repeatBlock :: String -> Parser String
 repeatBlock c = P(\env input -> [(env, "", c ++ input)])
 
+-- <for> := <consumeFor> for(<assignment> <bexp> ; <consumeAssignment>) { <program> <assignment> } <forLoop> | <consumeFor> for (<assignment> <bexp> ; <consumeAssignment>) { }
 for :: Parser String
 for = do{
 		w <- consumeFor;
 		repeatBlock w;
 		symbol "for";
 		symbol "(";
-		assignment;       --already terminates with ';'
+		assignment;       --already parse ';'
 		b <- bexp;
 		symbol ";";
 		a <- consumeAssignment;
@@ -391,7 +399,7 @@ for = do{
 				}
 	}
 
-
+-- <forLoop> := <consumeFor> for(<consumeAssignment> <bexp> ; <consumeAssignment> ) {<program> <assignment>} <forLoop> | <consumeFor> for( <consumeAssignment> <bexp> ; <consumeAssignment> ) {<parseProgram>}
 forLoop:: Parser String
 forLoop = do{
 				w <- consumeFor;
@@ -419,7 +427,7 @@ forLoop = do{
 						}
 			}
 
-
+-- <array> := [ <arrayContent> ]
 --parse the array brackets and (eventual)spaces after them
 array :: Parser [Numeric]
 array = do {
@@ -431,6 +439,7 @@ array = do {
 			return a;
         }
 
+-- <arrayContent> := <aexp> , <arrayContent> | <aexp>
 --parse the array elements, spaces and commas after them
 arrayContent :: Parser [Numeric]
 arrayContent = do {
@@ -447,6 +456,7 @@ arrayContent = do {
                 return [a0];
         }
 
+-- <matrix> := [ <matrixContent> ]
 --parse the matrix external brackets and (eventual)spaces after them
 matrix :: Parser [[Numeric]]
 matrix = do {
@@ -458,6 +468,7 @@ matrix = do {
                 return a;
         }
 
+-- <matrixContent> := <array> , <matrixContent> | <array>
 --parse all the arrays which composes the matrix
 matrixContent :: Parser [[Numeric]]
 matrixContent = do {
@@ -474,6 +485,9 @@ matrixContent = do {
                 space;
                 return [a];
         }
+
+
+--to parse 0 or more spaces
 
 tokenArray :: Parser [Numeric]
 tokenArray = token array

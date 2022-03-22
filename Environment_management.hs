@@ -1,5 +1,12 @@
 module Environment_management  where
 import Core
+    ( Parser(..),
+      Env,
+      Variable(vtype, name, value),
+      Numeric,
+      arrayNumericToString,
+      matrixNumericToString,
+      numericToString )
 
 
 -- Return the value of a variable given the name (and given the indeces in case of array or matrix)

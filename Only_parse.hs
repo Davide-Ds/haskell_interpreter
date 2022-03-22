@@ -10,6 +10,7 @@ import Core
       symbol )
 
 
+
 -- parse Arithmetic Expressions without evaluating them
 consumeAexp :: Parser String
 consumeAexp = do {
@@ -152,6 +153,13 @@ consumeBcomparison = do{
 								a1 <- consumeAexp;
 								return ( a0 ++ " == " ++ a1);
 								}
+								<|>
+							do{
+								a0 <- consumeAexp;
+								symbol "!=";
+								a1 <- consumeAexp;
+								return ( a0 ++ " != " ++ a1);
+								}
 							<|>
 							do {
 								a0 <- consumeAexp;
@@ -183,6 +191,7 @@ consumeBcomparison = do{
 						}
 
 
+-- parse commands without execute them
 
 consumeProgram :: Parser String
 consumeProgram = do{
@@ -338,19 +347,18 @@ consumeSwitch = do {
 					symbol "switch";
 					a <- consumeAexp;
 					symbol "{";
-					c <- consumeCase_stmt;
+					c <- consumeCaseStmt;
 					symbol "}";
 					return ("switch" ++ a ++ "{" ++ c ++ "}");
 				   }
 
--- <case_stmt> :=  ‘case’ <integer> ‘:’ <program> <case_stmt> | ‘default’ ‘:’ <program>  
-consumeCase_stmt :: Parser String
-consumeCase_stmt = do { 
+consumeCaseStmt :: Parser String
+consumeCaseStmt = do { 
 						symbol "case";
 						i <- integer;
 						symbol ":";
 						p <- consumeProgram;				
-						c <- consumeCase_stmt;
+						c <- consumeCaseStmt;
 						return ("case" ++ show i ++ ":" ++ p ++ c );		
 						}
 					<|>
@@ -359,7 +367,6 @@ consumeCase_stmt = do {
 						symbol ":";
 						consumeProgram;
 					}
-
 
 consumeWhile :: Parser String
 consumeWhile = do{
