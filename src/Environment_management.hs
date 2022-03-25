@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-tabs #-}
 module Environment_management  where
 import Core
     ( Parser(..),
@@ -15,6 +16,7 @@ readVariable name = P (\env input -> case searchVariable env name of
         [[]] -> []
         [[value]] -> [(env, value, input)])
 
+-- needed to modifiy an array element
 readWholeArray :: String -> Parser [Numeric]
 readWholeArray name = P (\env input -> case searchVariable env name of
         [[]] -> []
@@ -33,7 +35,7 @@ readMatrixVariable name j k = P (\env input -> case searchMatrixVariable env nam
         [[value]] -> [(env, value, input)])
 
 -- Search the value of a variable given the name (and indeces in case of array or matrix)
--- if the env list is empty there is no variable, if it isn't empty check the head and if is isn't the searched variable check ricursively the tail
+-- if the env list is empty there is no variable, if it isn't empty check the head and if it isn't the searched variable check ricursively the tail
 searchVariable :: Env -> String -> [[Numeric]]
 searchVariable [] queryname = []
 searchVariable (x:xs) queryname|(name x == queryname) && (vtype x == "Array") = [(value x) !! 0]           --get: [[Numeric]], [Numeric]
@@ -46,16 +48,16 @@ searchArrayVariable [] queryname j = [[]]
 searchArrayVariable (x:xs) queryname j = if ((name x) == queryname) then [[((value x) !! 0) !! j]]   --takes the element j of the only list in [[int]]
 else searchArrayVariable xs queryname j
 
--- replace an element in an array with a new one
-replace :: Int -> a -> [a] -> [a]
-replace pos newVal list | length list >= pos = take pos list ++ newVal : drop (pos+1) list
-                        | otherwise = list 
-
+-- search single matrix elements eg.x[i][j]
 searchMatrixVariable :: Env -> String -> Int -> Int -> [[Numeric]]
 searchMatrixVariable [] queryname j k = [[]]
 searchMatrixVariable (x:xs) queryname j k = if ((name x) == queryname) then [[((value x) !! j) !! k]]    --takes the element at row j and column k (takes list j in [[int]] and then its element k)
 else searchMatrixVariable xs queryname j k
 
+-- replace an element in an array with a new one
+replace :: Int -> a -> [a] -> [a]
+replace pos newVal list | length list >= pos = take pos list ++ newVal : drop (pos+1) list
+                        | otherwise = list 
 
 -- Update the environment with a variable
 updateEnv :: Variable -> Parser String

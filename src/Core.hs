@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-tabs #-}
 module Core where
 import Control.Applicative
 import Data.Char ( isAlpha, isAlphaNum, isDigit, isLower, isSpace, isUpper, isPunctuation )
@@ -66,9 +67,11 @@ instance Core.Alternative Parser where
                 [] -> parse q  env inp
                 [(envout, v, out)] -> [(envout, v, out)])
 
+
 -- In combination with sequencing and choice, we define other useful parser. 
 
-satisfy :: (Char -> Bool) -> Parser Char         --  parser for single characters that satisfy the predicate p
+ --  parser for single characters that satisfy the predicate p
+satisfy :: (Char -> Bool) -> Parser Char        
 satisfy p = do { x <- item;
         if p x then return x else Core.empty;}
 
@@ -101,9 +104,9 @@ string (x:xs) = do {
         return (x:xs);
         }
 
--- Using Core.many and some, we can now define parsers for identifiers (variable names)
+-- Using 'many' and 'some', we can now define parsers for identifiers (variable names)
 --  comprising a lower-case letter followed by zero or more alphanumeric characters,
---  natural numbers comprising one or more digits, and spacing comprising zero or more space, tab, and newline char
+--  numbers comprising one or more digits, and spacing comprising zero or more space, tab, and newline char
 
 ident :: Parser String           --es. parse ident "abc def" produces [("abc"," def")]
 ident = do {
@@ -137,6 +140,7 @@ int = do{
 	 }
     Core.<|> nat
 
+-- parser for floating point numbers eg. 13.9
 numberFloat :: Parser Float
 numberFloat = do{
                 numbersBeforeComma <- Core.many digit;
@@ -145,6 +149,7 @@ numberFloat = do{
                 return (read (numbersBeforeComma++"."++numbersAfterComma))
                 }
 
+-- parser for positive and negative floating point numbers eg. +13.9, -2.34
 numberFloatWithSign :: Parser Float
 numberFloatWithSign = do {
   symbol "+";
@@ -184,19 +189,8 @@ numericToInt (I x) =  x
 numericToInt (F x) = round x 
 
 numericToFloat:: Numeric -> Float  
-numericToFloat (F x) =  x
-numericToFloat (I x) =  fromIntegral x
-
---format array to print it
-arrayNumericToString:: [Numeric] ->  String  
-arrayNumericToString [] = "]"
-arrayNumericToString (x:xs) | checkInt (numericToFloat x) =  if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
-                            | otherwise = if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
-
---format matrix to print it
-matrixNumericToString:: [[Numeric]] ->  String  
-matrixNumericToString [] = []
-matrixNumericToString (x:xs) = "[" ++ if null xs then arrayNumericToString x ++ "" ++ matrixNumericToString xs else arrayNumericToString x ++ "," ++ matrixNumericToString xs
+numericToFloat (F x) = x
+numericToFloat (I x) = fromIntegral x
 
 --check if a float is an integer e.g. 17.0
 checkInt :: Float -> Bool              
@@ -206,3 +200,14 @@ checkInt n = floor n == ceiling n
 numericToString :: Numeric -> String 
 numericToString (F x) = if checkInt (numericToFloat (F x)) then show (numericToInt (F x)) else show (numericToFloat (F x)) 
 numericToString (I x) = show (numericToInt (I x))
+
+--format array to print it
+arrayNumericToString:: [Numeric] ->  String  
+arrayNumericToString [] = "]"       --if it is the last recursion step
+arrayNumericToString (x:xs) | checkInt (numericToFloat x) =  if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
+                            | otherwise = if null xs then numericToString x ++ "" ++ arrayNumericToString xs else numericToString x ++ ", " ++ arrayNumericToString xs
+
+--format matrix to print it
+matrixNumericToString:: [[Numeric]] ->  String  
+matrixNumericToString [] = []
+matrixNumericToString (x:xs) = "[" ++ if null xs then arrayNumericToString x ++ "" ++ matrixNumericToString xs else arrayNumericToString x ++ "," ++ matrixNumericToString xs

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-tabs #-}
 module Parse_and_execute where
 import Core
 import Environment_management
@@ -277,7 +278,7 @@ matrixAssignment = do{
 						symbol "=";
 						v <- tokenMatrix;
 						symbol ";";
-						updateEnv Variable{name=x, vtype="Matrix", value= v};   -- v=[[int]]
+						updateEnv Variable{name=x, vtype="Matrix", value= v};   -- v=[[Numeric]]
 					}
 
 -- ifThenElse := if (<bexp>) { <program> } | if (<bexp>) {<program>} else {<program>}
@@ -340,8 +341,7 @@ case_stmt  a = do {
 				}
 			<|>
 			do {                        -- if no case condition is matched then is execuded the default branch
-				symbol "default";
-				symbol ":";
+				symbol "default:";
 				program;
 			}
 

@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -fno-warn-tabs #-}
 import Environment_management ( showMemoryState, getMemory ) 
 import Core ( Env, parse )  
 import Parse_and_execute ( program ) 

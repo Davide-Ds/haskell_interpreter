@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-tabs #-}
 module Only_parse where
 import Core
     ( Alternative((<|>)),
@@ -363,8 +364,7 @@ consumeCaseStmt = do {
 						}
 					<|>
 					do {
-						symbol "default";
-						symbol ":";
+						symbol "default:";
 						consumeProgram;
 					}
 
