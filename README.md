@@ -1,2 +1,7 @@
 # haskell_interpreter
-interpreter and parser written in haskell
+parser and interpreter written in haskell
+
+To run the interpreter:
+    • start ghci in the src folder
+    • :load Main.hs
+    • call the 'main' function
